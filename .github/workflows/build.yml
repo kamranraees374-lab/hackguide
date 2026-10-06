@@ -21,7 +21,7 @@ jobs:
           channel: stable
 
       - name: Create Android project
-        run: flutter create --project-name hackguide_pro --platforms=android .
+        run: flutter create --project-name hackguide_pro --platforms=android.
 
       - name: Use my main.dart and add packages
         run: |
@@ -30,8 +30,12 @@ jobs:
 
       - name: Internet permission
         run: |
-          M=android/app/src/main/AndroidManifest.xml
-          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application android:usesCleartextTraffic="true"|' $M
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET" />\n <application|' android/app/src/main/AndroidManifest.xml
+
+      - name: Add new App Icon
+        run: |
+          for d in android/app/src/main/res/mipmap-*; do cp assets/icon.png $d/ic_launcher.png; done
+          for d in android/app/src/main/res/mipmap-*; do cp assets/icon.png $d/launcher_icon.png || true; done
 
       - name: Build release APK
         run: flutter build apk --release
