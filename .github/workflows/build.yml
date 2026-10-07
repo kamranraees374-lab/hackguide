@@ -21,7 +21,7 @@ jobs:
           channel: stable
 
       - name: Create Android project
-        run: flutter create --project-name HackGuide --platforms=android .
+        run: flutter create --project-name hackguide --platforms=android .
 
       - name: Use my main.dart and add packages
         run: |
