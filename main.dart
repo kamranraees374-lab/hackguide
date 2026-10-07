@@ -38,50 +38,275 @@ class Level {
   const Level(this.t, this.d, this.icon, this.lessons);
 }
 
+/* ===================== 40-LESSON CURRICULUM ===================== */
 const levels = <Level>[
-  Level('Level 1: Buniyad', 'Qanoon, ethics aur Linux', Icons.shield_outlined, [
-    Lesson(
-      'Ethical hacking kya hai',
-      Icons.shield_outlined,
-      'Ethical hacker wo hai jo **likhit ijazat** ke saath kisi system ki kamzoriyan dhoondta hai.\n\n'
-          '- Scope: kya test karna hai pehle tay ho.\n'
-          '- Ijazat ke baghair check karna jurm hai.\n'
-          '- Legal jagah: VM, TryHackMe, HackTheBox.',
-      Quiz('Test shuru karne se pehle sabse zaroori?',
-          ['Tools install karna', 'Likhit ijazat', 'Fast internet'], 1),
-    ),
-    Lesson(
-      'Linux ke basic commands',
-      Icons.terminal,
-      'Zyadatar tools Linux par chalte hain.\n\n'
-          '`pwd` abhi kahan ho\n`ls -la` files list\n`cat file` file ka content\n`grep text` dhoondo',
-      Quiz('File ke andar kisi lafz ko dhoondne ka command?',
-          ['ls', 'grep', 'pwd'], 1),
-    ),
+  Level('Module 1: Foundations & Legal', 'CIA Triad, Laws, Networking, Linux, Lab', Icons.shield_outlined, [
+    Lesson('Intro to Ethical Hacking & CIA Triad', Icons.shield_outlined,
+        '**CIA Triad** security ka buniyadi model hai: **Confidentiality**, **Integrity**, **Availability**.\n\n'
+        '- White/Black/Grey Hat hackers ka farq niyat aur ijazat mein hai.\n'
+        '- **Vulnerability** = kamzori, **Threat** = khatra, **Risk** = dono ka asar.\n\n'
+        'Practical: Real-world security failures ko CIA Triad mein categorize karo.',
+        Quiz('Server crash hone par CIA Triad ka kaunsa component fail hota hai?',
+            ['Confidentiality', 'Integrity', 'Availability'], 2)),
+    Lesson('Cyber Laws, Ethics & RoE', Icons.gavel,
+        '**Rules of Engagement (RoE)** test ka scope likhit tay karta hai.\n\n'
+        '- **NDA** client data confidential rakhta hai.\n'
+        '- Scope se bahar kuch bhi test karna illegal hai.\n'
+        '- Qawaneen: PECA, Computer Fraud & Abuse Act.\n\n'
+        'Practical: Sample RoE document review karke out-of-scope tasks highlight karo.',
+        Quiz('Unauthorized penetration testing conduct karne par kaunsa law violate hota hai agar client authorization sign na ho?',
+            ['Copyright Act', 'Computer Misuse / Cybercrime Act', 'Data Protection Act'], 1)),
+    Lesson('Networking Fundamentals', Icons.lan,
+        '**OSI Model** (7 layers) vs **TCP/IP Model** (4 layers) networking ki buniyad hain.\n\n'
+        'Aam ports:\n`21` FTP, `22` SSH, `80` HTTP, `443` HTTPS, `3389` RDP.\n\n'
+        'Practical: Standard ports ke protocol mapping ki practice karo.',
+        Quiz('Encrypted remote terminal management ke liye konsa default port istemal hota hai?',
+            ['Port 21', 'Port 22', 'Port 80'], 1)),
+    Lesson('Linux CLI Mastery', Icons.terminal,
+        'Security auditing ke liye Linux command line zaroori hai.\n\n'
+        '`grep` pattern dhoondta hai, `awk`/`sed` text process karte hain, pipe `|` commands jorta hai.\n\n'
+        'Practical: Log files se failed login attempts ke liye Bash script likho.',
+        Quiz('Linux mein /etc/shadow file ki access kin users ke paas hoti hai?',
+            ['Har user', 'Strictly Root User', 'Guest user'], 1)),
+    Lesson('Safe Virtual Hacking Lab', Icons.computer,
+        'Practice ke liye isolated lab zaroori hai.\n\n'
+        '- **VirtualBox/VMware** se virtualization.\n'
+        '- **Kali Linux** attacker machine, **Metasploitable/DVWA** target.\n'
+        '- **Host-Only Networking** se isolation.\n\n'
+        'Practical: Kali se target VM ko ping karke connectivity check karo.',
+        Quiz('Target machine ko host aur internet se isolate rakhne ke liye kaunsa VM network mode best hai?',
+            ['Bridged', 'NAT', 'Host-Only Network'], 2)),
   ]),
-  Level('Level 2: Networking', 'IP, port, DNS, protocols', Icons.public, [
-    Lesson(
-      'IP, port aur protocol',
-      Icons.public,
-      '**IP** device ka pata hai. **Port** darwaza hai.\n\n'
-          'Aam ports:\n`22` SSH, `80` HTTP, `443` HTTPS.\n\n'
-          '**TCP** bharosemand hai, **UDP** tez hai.',
-      Quiz('HTTPS kis port par chalta hai?', ['22', '80', '443'], 2),
-    ),
+  Level('Module 2: Reconnaissance', 'OSINT, Nmap, DNS, Google Dorking', Icons.travel_explore, [
+    Lesson('Passive Recon & OSINT', Icons.travel_explore,
+        '**OSINT** (Open Source Intelligence) publicly available data collect karta hai.\n\n'
+        '`WHOIS` domain info, **Shodan** internet devices index karta hai, archive.org purani websites.\n\n'
+        'Practical: Shodan se unauthenticated cameras aur open RDP ports dhoondo.',
+        Quiz('Shodan internet-connected devices ko index karne ke liye sab se pehle kya scan karta hai?',
+            ['File content', 'Service Banners', 'User passwords'], 1)),
+    Lesson('Active Recon & Network Discovery', Icons.radar,
+        'Active recon target se seedha interact karta hai.\n\n'
+        '`fping` ping sweep, `arp-scan` LAN discovery.\n\n'
+        '**ARP** IP ko MAC address mein resolve karta hai.\n\n'
+        'Practical: fping aur arp-scan se subnet ke active hosts discover karo.',
+        Quiz('Kaunsa protocol LAN par IP address ko MAC address mein resolve karta hai?',
+            ['DNS', 'ARP', 'DHCP'], 1)),
+    Lesson('Advanced Port Scanning & Nmap', Icons.search,
+        '**Nmap** scanning ka sabse powerful tool hai.\n\n'
+        '`-sS` stealth SYN scan, `-sU` UDP scan, `-sV` version detection.\n\n'
+        '**NSE** scripts extra checks karte hain.\n\n'
+        'Practical: Stealth SYN scan se services fingerprint karo.',
+        Quiz('Nmap ka SYN Scan Three-Way Handshake kyun pura nahi karta?',
+            ['Scan tez aur stealthy rakhne ke liye', 'Target crash karne ke liye', 'Password nikalne ke liye'], 0)),
+    Lesson('DNS Enumeration & Subdomain Discovery', Icons.dns,
+        'DNS records: `A`, `MX`, `TXT`, `NS`, `CNAME`.\n\n'
+        '**Zone Transfer** attack se poora DNS zone leak ho sakta hai.\n\n'
+        'Practical: `dig` aur `dnsrecon` se zone transfer vulnerability check karo.',
+        Quiz('DNS Zone Transfer attack ke liye kaunsa record exploit hota hai?',
+            ['AXFR record', 'MX record', 'TXT record'], 0)),
+    Lesson('Google Dorking & Metadata Analysis', Icons.image_search,
+        'Advanced search operators: `filetype:`, `inurl:`, `intitle:`.\n\n'
+        '**Exiftool** files se hidden metadata nikalta hai.\n\n'
+        'Practical: PDF files se usernames aur software versions extract karo.',
+        Quiz('Google dork filetype:env "DB_PASSWORD" kis cheez ko uncover karta hai?',
+            ['Exposed config files', 'Server logs', 'User photos'], 0)),
   ]),
-  Level('Level 3: Recon', 'Nmap aur output parhna', Icons.search, [
-    Lesson(
-      'Nmap ke basics',
-      Icons.search,
-      'Nmap batata hai ke ports khule hain. Sirf **authorized targets** par.\n\n'
-          '`nmap -sV host` service ka version\n'
-          'Output: **open** (chal rahi), **closed** (band), **filtered** (firewall).',
-      Quiz('Nmap mein "filtered" ka matlab?',
-          ['Service on hai', 'Firewall roak raha hai', 'Host band hai'], 1),
-    ),
+  Level('Module 3: Vulnerability Assessment', 'CVSS, Scanning, Burp Suite', Icons.assessment, [
+    Lesson('VA Methodology & CVSS', Icons.assessment,
+        '**CVSS** (v3.1/v4.0) vulnerability ki severity score karta hai.\n\n'
+        '**False Positive** = scanner ki ghalat alert, **True Positive** = asal kamzori.\n\n'
+        'Practical: CVE report ka CVSS score calculate karke risk rating assign karo.',
+        Quiz('CVSS metric mein "Attack Vector: Network" ka kya matlab hai?',
+            ['Sirf physical access se exploit', 'Remote internet se exploit', 'Sirf local user exploit kar sakta hai'], 1)),
+    Lesson('Network Vulnerability Scanning', Icons.network_check,
+        '**Nessus/OpenVAS** automated scanners hain.\n\n'
+        '**Credentialed scan** internal config dekh sakta hai, **non-credentialed** bahar se hi check karta hai.\n\n'
+        'Practical: Lab environment scan karke report export karo.',
+        Quiz('Credentialed scan non-credentialed se zyada accurate kyun hota hai?',
+            ['Yeh OS ke andar config aur patches read karta hai', 'Yeh tez chalta hai', 'Yeh encrypted hota hai'], 0)),
+    Lesson('Web App Scanning with Burp Suite', Icons.language,
+        '**Burp Suite** intercepting proxy hai.\n\n'
+        '**Repeater** single request repeat karta hai, **Intruder** automated attacks chalata hai.\n\n'
+        'Practical: Burp proxy se browser traffic intercept karke headers analyze karo.',
+        Quiz('Burp Suite ka Repeater tool kis kaam ke liye use hota hai?',
+            ['Multiple requests automate karna', 'Single request modify karke bar-bar test karna', 'Network scan karna'], 1)),
+    Lesson('Banner Grabbing & Service Enumeration', Icons.router,
+        '`netcat`/`telnet` se service banners grab hote hain.\n\n'
+        'Banner se exact software version pata chalta hai, jo attack ko target karta hai.\n\n'
+        'Practical: Port 80 aur 21 se banner grab karo.',
+        Quiz('Server banners hide karne se kis attack ko mushkil hota hai?',
+            ['Phishing', 'Automated service-specific exploit', 'Password reset'], 1)),
+    Lesson('Analyzing & Prioritizing Scan Results', Icons.filter_alt,
+        'Har scan result exploitable nahi hota.\n\n'
+        '**Triage** se false positives filter hote hain, business context risk mapping karta hai.\n\n'
+        'Practical: Scan output se top 3 critical vulnerabilities filter karo.',
+        Quiz('Agar scanner vulnerable bataye par manual test se exploit na ho, to yeh kya hai?',
+            ['True Positive', 'False Positive', 'Critical Risk'], 1)),
+  ]),
+  Level('Module 4: System Hacking', 'Passwords, Metasploit, Privesc, Malware', Icons.lock_open, [
+    Lesson('Password Cracking & Hashing', Icons.key,
+        'Hashing algorithms: **MD5, SHA256, bcrypt**.\n\n'
+        '**Dictionary attack**, **Brute-force**, **Rainbow Tables** cracking techniques hain.\n\n'
+        '`Hashcat`/`John the Ripper` tools hain.\n\n'
+        'Practical: Hashcat se MD5/NTLM hash crack karo.',
+        Quiz('Rainbow tables ko un-effective banane ke liye hash mein kya add kiya jata hai?',
+            ['Salt', 'Extra length', 'Compression'], 0)),
+    Lesson('Metasploit Framework', Icons.flash_on,
+        '**Metasploit** exploit framework hai.\n\n'
+        '**Payload** (Singles/Stagers), **Auxiliary** modules, **Meterpreter** advanced shell.\n\n'
+        'Practical: Vulnerable service par payload drop karke Meterpreter session gain karo.',
+        Quiz('Staged aur Unstaged Payload mein kya farq hai?',
+            ['Staged chhota initial code bhejta hai jo baki download karta hai', 'Unstaged zyada secure hai', 'Koi farq nahi'], 0)),
+    Lesson('Privilege Escalation', Icons.arrow_upward,
+        '**Vertical** escalation low se high privilege, **Horizontal** same-level access.\n\n'
+        '**SUID binaries**, **Unquoted Service Paths**, misconfigured sudo common tareeqe hain.\n\n'
+        'Practical: SUID binary exploit karke root shell gain karo.',
+        Quiz('Linux mein konsa bit binary ko file-owner ke privilege se run karne deta hai?',
+            ['SUID bit', 'Read bit', 'Execute bit'], 0)),
+    Lesson('Malware Threats', Icons.bug_report,
+        '**Trojans, Keyloggers, Backdoors** common malware types hain.\n\n'
+        '**C2 (Command & Control)** server compromised machines ko control karta hai.\n\n'
+        'Practical: MSFvenom se custom payload banakar obfuscation test karo.',
+        Quiz('Malware ka C2 server kis liye istemal hota hai?',
+            ['Commands bhejne aur data exfiltrate karne ke liye', 'Sirf logging ke liye', 'Antivirus update ke liye'], 0)),
+    Lesson('Covering Tracks & Log Evasion', Icons.visibility_off,
+        'Attackers logs clean karte hain taake trace na ho.\n\n'
+        'Windows **Event ID 1102** = audit log clear hua.\n\n'
+        'Practical: Linux par bash history flush karne ki technique seekho.',
+        Quiz('Windows mein Security logs clean hone ka Event ID kya hai?',
+            ['Event ID 4625', 'Event ID 1102', 'Event ID 1000'], 1)),
+  ]),
+  Level('Module 5: Web App Security', 'OWASP Top 10: SQLi, XSS, CSRF, LFI', Icons.web, [
+    Lesson('OWASP Top 10 Overview', Icons.web,
+        '**OWASP Top 10** web applications ki sab se critical risks list karta hai.\n\n'
+        'HTTP headers, cookies, client-server model web security ki buniyad hain.\n\n'
+        'Practical: Browser dev tools (F12) se cookies aur local storage inspect karo.',
+        Quiz('OWASP Top 10 list kis maqsad ke liye publish ki jati hai?',
+            ['Marketing ke liye', 'Critical web risks highlight karne ke liye', 'Sirf developers training ke liye'], 1)),
+    Lesson('SQL Injection', Icons.storage,
+        '**SQLi**: In-Band, Error-Based, Blind (Boolean/Time-Based).\n\n'
+        '`SQLmap` automated exploitation tool hai.\n\n'
+        'Practical: Login form mein `\' OR \'1\'=\'1` se authentication bypass karo.',
+        Quiz('SQL Injection prevent karne ka sabse secure tarika kya hai?',
+            ['Prepared Statements', 'Input hide karna', 'Password length badhana'], 0)),
+    Lesson('Cross-Site Scripting (XSS)', Icons.code,
+        '**Stored XSS** database mein save hota hai, **Reflected XSS** turant response mein aata hai, **DOM-based** client-side JS mein.\n\n'
+        'Practical: `<script>alert(document.cookie)</script>` se Reflected XSS test karo.',
+        Quiz('Stored XSS Reflected se zyada dangerous kyun hai?',
+            ['Yeh database mein save hoke har visitor ko affect karta hai', 'Yeh tez chalta hai', 'Yeh sirf admin ko affect karta hai'], 0)),
+    Lesson('CSRF & Auth Flaws', Icons.sync_problem,
+        '**CSRF** browser ke trust ka faida uthata hai.\n\n'
+        '**CSRF tokens**, **SameSite cookies** protection dete hain.\n\n'
+        'Practical: Authenticated user se background action trigger karne wala HTML form banao.',
+        Quiz('CSRF attack kis cheez ka faida uthata hai?',
+            ['Browser ka automated credentials bhejne ka trust', 'Weak password', 'Server downtime'], 0)),
+    Lesson('File Inclusion (LFI/RFI) & RCE', Icons.folder_open,
+        '**LFI** local file include karta hai, **RFI** remote file.\n\n'
+        '**Path Traversal** se directories climb hoti hain.\n\n'
+        'Practical: URL mein `../../../../etc/passwd` inject karke LFI exploit karo.',
+        Quiz('LFI vulnerability RCE mein kab convert hoti hai?',
+            ['Jab attacker PHP code logs/uploads mein inject kar sake', 'Jab server slow ho', 'Jab user logout kare'], 0)),
+  ]),
+  Level('Module 6: Network & Wireless', 'MITM, Wi-Fi, DDoS, Evasion', Icons.wifi, [
+    Lesson('Sniffing & MITM', Icons.hub,
+        '**Promiscuous mode** se saara traffic capture hota hai.\n\n'
+        '**ARP Poisoning** se attacker beech mein aa jata hai (MITM).\n\n'
+        '`Wireshark`, `Ettercap` tools hain.\n\n'
+        'Practical: Wireshark se plain-text passwords filter karo.',
+        Quiz('Switched network par MITM ke liye attacker kis table ko corrupt karta hai?',
+            ['Routing table', 'ARP Cache table', 'DNS cache'], 1)),
+    Lesson('Wireless Hacking', Icons.wifi,
+        '**WEP** weak hai, **WPA2/WPA3** secure.\n\n'
+        '**4-Way Handshake** capture karke offline crack hota hai.\n\n'
+        '`Aircrack-ng` suite se deauth aur capture hota hai.\n\n'
+        'Practical: airodump-ng se WPA2 handshake capture karo.',
+        Quiz('WPA2 cracking ke liye attacker ko kya capture karna padta hai?',
+            ['SSID broadcast', '4-Way WPA Handshake', 'MAC address'], 1)),
+    Lesson('DoS & DDoS', Icons.flash_on,
+        '**SYN Flood**, **UDP Flood**, **HTTP Flood** common attacks hain.\n\n'
+        '**Amplification attacks** (NTP/DNS) chhoti request se bada response generate karte hain.\n\n'
+        'Practical: Wireshark par SYN flood pattern identify karo.',
+        Quiz('Amplification DDoS attack kis protocol mechanism ko exploit karta hai?',
+            ['TCP handshake', 'UDP (chhoti request, bada response)', 'HTTPS encryption'], 1)),
+    Lesson('Session Hijacking', Icons.link,
+        '**TCP Sequence numbers** aur **Session IDs** predict karke session hijack hoti hai.\n\n'
+        'Cookie manipulation bhi ek tareeqa hai.\n\n'
+        'Practical: Session hijacking ka flow diagram banao.',
+        Quiz('TCP Session Hijacking ke liye attacker ko kya predict karna hota hai?',
+            ['Next TCP Sequence Number', 'Server IP', 'DNS record'], 0)),
+    Lesson('Evasion Techniques', Icons.security,
+        '**Fragmentation**, **Proxy Chains**, **Tor**, encrypted tunnels firewall/IDS ko bypass karte hain.\n\n'
+        'Practical: Nmap ke `-f` aur `--decoy` flags se detection bypass karo.',
+        Quiz('IDS/IPS ko signature-based detection se bypass karne ke liye payload mein kya karte hain?',
+            ['Payload encoding/obfuscation', 'Payload size badhana', 'Payload delete karna'], 0)),
+  ]),
+  Level('Module 7: Social Engineering', 'Phishing, SET, Physical, OSINT on Humans', Icons.groups, [
+    Lesson('Phishing & Spear-Phishing', Icons.mail,
+        'Types: **Bulk, Spear, Whaling, Smishing, Vishing**.\n\n'
+        '**Typosquatting** aur **Email Spoofing** common tareeqe hain.\n\n'
+        'Practical: Email headers se spoofed Return-Path aur SPF/DKIM failures check karo.',
+        Quiz('DMARC policy email security mein kya check karti hai?',
+            ['SPF/DKIM alignment', 'Password strength', 'File size'], 0)),
+    Lesson('SET & Harvesting', Icons.content_copy,
+        '**Social Engineering Toolkit (SET)** se login pages clone hote hain.\n\n'
+        '**Credential Harvesting** se victim ka data chori hota hai.\n\n'
+        'Practical: Lab mein login page clone karke credential capture test karo.',
+        Quiz('Credential Harvester attack mein victim ka data kahan redirect hota hai?',
+            ['Attacker ke listening server par', 'Asal website par', 'Email inbox mein'], 0)),
+    Lesson('Physical Security & Hardware Attacks', Icons.usb,
+        '**Tailgating**, **Shoulder Surfing**, **Lock Picking** physical attacks hain.\n\n'
+        '**BadUSB (Rubber Ducky)** keyboard ban kar keystrokes inject karta hai.\n\n'
+        'Practical: DuckyScript se automated keystroke injection test karo.',
+        Quiz('USB Rubber Ducky attack computer par detect kyun nahi hota?',
+            ['Yeh antivirus ko bypass karta hai', 'Computer isay standard USB Keyboard samajhta hai', 'Yeh encrypted hota hai'], 1)),
+    Lesson('OSINT on Humans', Icons.person_search,
+        'Social media intelligence se target profile banta hai.\n\n'
+        '**Maltego** relationship mapping tool hai.\n\n'
+        '**Breach Data** se leaked credentials milte hain.\n\n'
+        'Practical: Username search tools se digital footprint map karo.',
+        Quiz('Breach Data aggregation services testers ko kya find karne mein help karti hain?',
+            ['Reused passwords aur leaked credentials', 'Server uptime', 'Network speed'], 0)),
+    Lesson('Defense & Countermeasures', Icons.verified_user,
+        '**MFA/2FA**, **Zero Trust Architecture**, employee training defense ke pillars hain.\n\n'
+        'SMS 2FA weak hai (SIM-swapping), **TOTP apps** zyada secure.\n\n'
+        'Practical: SMS 2FA ki jagah Authenticator App enforce karna seekho.',
+        Quiz('MFA mein kaunsa combination sahi hai?',
+            ['Do passwords', 'Password + Authenticator App', 'Username + Email'], 1)),
+  ]),
+  Level('Module 8: Advanced & Career', 'Crypto, Mobile, Cloud, Forensics, Reports', Icons.school, [
+    Lesson('Cryptography & PKI', Icons.enhanced_encryption,
+        '**Symmetric** (same key) vs **Asymmetric** (public/private key) encryption.\n\n'
+        '**PKI** aur **SSL/TLS handshake** secure communication ensure karte hain.\n\n'
+        'Practical: OpenSSL se RSA key pair generate karke file encrypt/decrypt karo.',
+        Quiz('Asymmetric Encryption mein data encrypt karne ke liye kaunsi key use hoti hai?',
+            ['Sender ki Private Key', 'Recipient ki Public Key', 'Shared Secret Key'], 1)),
+    Lesson('Mobile Security', Icons.phone_android,
+        '**JADX** se Android APK decompile hoti hai.\n\n'
+        '**Static/Dynamic Analysis**, **ADB** commands, insecure storage common issues hain.\n\n'
+        'Practical: JADX se APK decompile karke hardcoded API keys dhoondo.',
+        Quiz('Android Reverse Engineering ke liye konsi utility device se connect hoti hai?',
+            ['ADB', 'SSH', 'FTP'], 0)),
+    Lesson('Cloud Security', Icons.cloud,
+        '**IaaS, PaaS, SaaS** cloud service models hain.\n\n'
+        '**Misconfigured S3 Buckets** aur **IAM policy errors** common vulnerabilities hain.\n\n'
+        'Practical: AWS CLI se publicly readable S3 buckets scan karo.',
+        Quiz('Shared Responsibility Model mein Customer ki primary responsibility kya hai?',
+            ['Data center security', 'Data security aur IAM', 'Hardware maintenance'], 1)),
+    Lesson('Incident Response & Forensics', Icons.biotech,
+        '**PICERL** Incident Response Lifecycle hai.\n\n'
+        '**Volatility** tool memory forensics ke liye use hota hai.\n\n'
+        'Practical: Memory dump ko Volatility mein process karke running processes extract karo.',
+        Quiz('Order of Volatility ke mutabiq sabse pehle kya collect karna chahiye?',
+            ['Hard disk', 'RAM / Volatile Memory', 'Log files'], 1)),
+    Lesson('Pentest Report Writing', Icons.description,
+        'Report mein **Executive Summary**, Technical Details, **PoC**, Remediation Steps hote hain.\n\n'
+        'Practical: Vulnerability ka PoC writeup aur CISO-level remediation advisory design karo.',
+        Quiz('Pentest Report ka Executive Summary kis audience ke liye likha jata hai?',
+            ['Developers', 'C-Level Executives (non-technical)', 'Hackers'], 1)),
   ]),
 ];
 
+/* ===================== STATE ===================== */
 class AppState extends ChangeNotifier {
   late SharedPreferences p;
   Set<String> done = {};
@@ -160,6 +385,7 @@ class AppState extends ChangeNotifier {
 
 final app = AppState();
 
+/* ===================== HELPERS ===================== */
 void toast(BuildContext c, String msg) {
   ScaffoldMessenger.of(c)
     ..hideCurrentSnackBar()
@@ -269,6 +495,7 @@ class PrimaryBtn extends StatelessWidget {
       );
 }
 
+/* ===================== MAIN ===================== */
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const HackGuideApp());
@@ -796,15 +1023,20 @@ class _ToolsPageState extends State<ToolsPage> {
     'nmap': 'Network scanner: ports aur services dhoondta hai (sirf authorized targets).',
     '-sV': 'Service ka version detect karta hai.',
     '-sS': 'SYN (stealth) scan.',
+    '-sU': 'UDP scan.',
     '-p': 'Specific ports chunna (e.g. -p 22,80).',
     '-A': 'Aggressive: OS, version, scripts, traceroute.',
     '-Pn': 'Host discovery (ping) skip karta hai.',
+    '-f': 'Packets fragment karta hai (evasion).',
     'ls': 'Directory ki files list karta hai.',
     '-la': 'Saari files (hidden bhi) detail ke saath.',
     'pwd': 'Abhi ki directory dikhata hai.',
     'cat': 'File ka content print karta hai.',
     'grep': 'Text ke andar pattern dhoondta hai.',
     'cd': 'Directory change karta hai.',
+    'dig': 'DNS records query karta hai.',
+    'netcat': 'Raw network connections banata hai (banner grabbing).',
+    'hashcat': 'GPU-accelerated password cracking tool.',
   };
 
   void analyze() {
@@ -1011,7 +1243,9 @@ class BadgesPage extends StatelessWidget {
     final ach = [
       ['🌱', 'Beginner', app.completed >= 1],
       ['🔥', 'Streaker', app.streak >= 3],
-      ['🔎', 'Scanner', app.done.contains('2-0')],
+      ['🔎', 'Scanner', app.done.contains('1-2')],
+      ['💉', 'Injector', app.done.contains('4-1')],
+      ['🕵️', 'Social Engineer', app.done.contains('6-0')],
       ['🏆', 'Pro Hacker', app.completed == app.total],
     ];
     return ListView(padding: const EdgeInsets.all(20), children: [
