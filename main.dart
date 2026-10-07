@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -95,13 +97,13 @@ const levels = <Level>[
         '**Nmap** scanning ka sabse powerful tool hai.\n\n'
         '`-sS` stealth SYN scan, `-sU` UDP scan, `-sV` version detection.\n\n'
         '**NSE** scripts extra checks karte hain.\n\n'
-        'Practical: Stealth SYN scan se services fingerprint karo.',
+        'Practical: Tools tab mein jaa kar apna Port Scanner tool use karo.',
         Quiz('Nmap ka SYN Scan Three-Way Handshake kyun pura nahi karta?',
             ['Scan tez aur stealthy rakhne ke liye', 'Target crash karne ke liye', 'Password nikalne ke liye'], 0)),
     Lesson('DNS Enumeration & Subdomain Discovery', Icons.dns,
         'DNS records: `A`, `MX`, `TXT`, `NS`, `CNAME`.\n\n'
         '**Zone Transfer** attack se poora DNS zone leak ho sakta hai.\n\n'
-        'Practical: `dig` aur `dnsrecon` se zone transfer vulnerability check karo.',
+        'Practical: Tools tab mein DNS Lookup tool se kisi domain ke IPs resolve karo.',
         Quiz('DNS Zone Transfer attack ke liye kaunsa record exploit hota hai?',
             ['AXFR record', 'MX record', 'TXT record'], 0)),
     Lesson('Google Dorking & Metadata Analysis', Icons.image_search,
@@ -627,7 +629,6 @@ class _ShellState extends State<Shell> {
   }
 
   void showSettings() {
-    final ctrl = TextEditingController(text: app.url);
     showDialog(
       context: context,
       builder: (c) => AlertDialog(
@@ -666,31 +667,11 @@ class _ShellState extends State<Shell> {
               child: const Text('Reset'),
             ),
           ]),
-          const Divider(height: 28, color: C.border),
-          const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Local AI Server', style: TextStyle(fontWeight: FontWeight.w600))),
-          const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('OpenAI-compatible URL (Termux/PC)',
-                  style: TextStyle(color: C.muted, fontSize: 11))),
-          const SizedBox(height: 8),
-          TextField(
-            controller: ctrl,
-            decoration: InputDecoration(
-              hintText: 'http://localhost:8080',
-              filled: true,
-              fillColor: C.surface2,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-            ),
-          ),
         ]),
         actions: [
           SizedBox(
             width: double.infinity,
             child: PrimaryBtn('Done', () {
-              app.setUrl(ctrl.text.trim());
               Navigator.pop(c);
               toast(context, 'Settings Saved');
             }),
@@ -908,9 +889,28 @@ class _LessonPageState extends State<LessonPage> {
       picked = k;
       if (k == x.quiz.a) {
         correct = true;
+        final total = levels[widget.i].lessons.length;
+        final beforeCount = app.levelDone(widget.i);
         final isNew = app.complete(widget.i, widget.j);
+        final afterCount = app.levelDone(widget.i);
         result = isNew ? '🎉 Correct! +50 XP added.' : '✅ Correct! (Already completed)';
-        if (isNew) toast(context, 'Lesson Completed!');
+        if (isNew) {
+          toast(context, 'Lesson Completed!');
+          final justFinishedLevel = beforeCount < total && afterCount == total;
+          if (justFinishedLevel) {
+            Future.delayed(const Duration(milliseconds: 900), () {
+              if (mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        LevelCompleteScreen(level: levels[widget.i], levelIndex: widget.i),
+                  ),
+                );
+              }
+            });
+          }
+        }
       } else {
         correct = false;
         result = '❌ Incorrect. Try again.';
@@ -1009,13 +1009,705 @@ class _LessonPageState extends State<LessonPage> {
   }
 }
 
-class ToolsPage extends StatefulWidget {
-  const ToolsPage({super.key});
-  @override
-  State<ToolsPage> createState() => _ToolsPageState();
+/* ===================== LEVEL COMPLETE CELEBRATION ===================== */
+class _ConfettiPiece {
+  double x, y, speed, size, angle, angleSpeed;
+  Color color;
+  _ConfettiPiece({
+    required this.x,
+    required this.y,
+    required this.speed,
+    required this.size,
+    required this.angle,
+    required this.angleSpeed,
+    required this.color,
+  });
 }
 
-class _ToolsPageState extends State<ToolsPage> {
+class _ConfettiPainter extends CustomPainter {
+  final List<_ConfettiPiece> pieces;
+  _ConfettiPainter(this.pieces);
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final p in pieces) {
+      final paint = Paint()..color = p.color;
+      canvas.save();
+      canvas.translate(p.x * size.width, p.y * size.height);
+      canvas.rotate(p.angle);
+      canvas.drawRect(
+          Rect.fromCenter(center: Offset.zero, width: p.size, height: p.size * 0.5), paint);
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) => true;
+}
+
+class ConfettiOverlay extends StatefulWidget {
+  const ConfettiOverlay({super.key});
+  @override
+  State<ConfettiOverlay> createState() => _ConfettiOverlayState();
+}
+
+class _ConfettiOverlayState extends State<ConfettiOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController ctrl;
+  final rnd = Random();
+  late List<_ConfettiPiece> pieces;
+  static const colors = [C.accent, C.accentL, C.success, C.warning, Colors.white];
+
+  @override
+  void initState() {
+    super.initState();
+    pieces = List.generate(
+        45,
+        (_) => _ConfettiPiece(
+              x: rnd.nextDouble(),
+              y: -rnd.nextDouble() * 1.2,
+              speed: 0.15 + rnd.nextDouble() * 0.3,
+              size: 6 + rnd.nextDouble() * 7,
+              angle: rnd.nextDouble() * 6.28,
+              angleSpeed: (rnd.nextDouble() - 0.5) * 0.25,
+              color: colors[rnd.nextInt(colors.length)],
+            ));
+    ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 5))
+      ..addListener(() {
+        setState(() {
+          for (final p in pieces) {
+            p.y += p.speed * 0.016;
+            p.angle += p.angleSpeed;
+            if (p.y > 1.2) {
+              p.y = -0.2;
+              p.x = rnd.nextDouble();
+            }
+          }
+        });
+      })
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: CustomPaint(painter: _ConfettiPainter(pieces), size: Size.infinite),
+    );
+  }
+}
+
+class LevelCompleteScreen extends StatelessWidget {
+  final Level level;
+  final int levelIndex;
+  const LevelCompleteScreen({super.key, required this.level, required this.levelIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    final nextLocked = levelIndex + 1 < levels.length;
+    return Scaffold(
+      backgroundColor: C.bg,
+      body: Stack(children: [
+        const Positioned.fill(child: ConfettiOverlay()),
+        SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('🎉', style: TextStyle(fontSize: 54)),
+                const SizedBox(height: 10),
+                const Text('Level Complete!',
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                Text(level.t,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: C.accentL, fontSize: 15, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 36),
+                SizedBox(
+                  width: 190,
+                  height: 190,
+                  child: Stack(alignment: Alignment.center, children: [
+                    Container(
+                      width: 190,
+                      height: 190,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                            colors: [C.accent.withOpacity(.3), Colors.transparent],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight),
+                        border: Border.all(color: C.accent.withOpacity(.4), width: 2),
+                      ),
+                    ),
+                    Container(
+                      width: 116,
+                      height: 116,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                            colors: [C.accent, Color(0xFF8B5CF6)]),
+                        boxShadow: [
+                          BoxShadow(color: C.accent.withOpacity(.5), blurRadius: 30)
+                        ],
+                      ),
+                      child: Icon(level.icon, color: Colors.white, size: 52),
+                    ),
+                    const Positioned(
+                        bottom: 4, right: 8, child: Text('🏆', style: TextStyle(fontSize: 38))),
+                  ]),
+                ),
+                const SizedBox(height: 36),
+                GCard(
+                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+                    Column(children: [
+                      Text('${level.lessons.length}',
+                          style: const TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.w800, color: C.accentL)),
+                      const Text('LESSONS',
+                          style: TextStyle(
+                              color: C.muted, fontSize: 10, fontWeight: FontWeight.w600)),
+                    ]),
+                    Container(width: 1, height: 36, color: C.border),
+                    Column(children: [
+                      Text('+${level.lessons.length * 50}',
+                          style: const TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.w800, color: C.warning)),
+                      const Text('XP EARNED',
+                          style: TextStyle(
+                              color: C.muted, fontSize: 10, fontWeight: FontWeight.w600)),
+                    ]),
+                  ]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  nextLocked
+                      ? 'Agla module unlock ho gaya: ${levels[levelIndex + 1].t}'
+                      : 'Tumne poora course complete kar liya! 🚀',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: C.muted, fontSize: 13),
+                ),
+                const SizedBox(height: 28),
+                PrimaryBtn('Continue', () => Navigator.of(context).pop()),
+              ]),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+/* ===================== TOOLS HUB ===================== */
+class ToolItem {
+  final String title, desc;
+  final IconData icon;
+  final WidgetBuilder builder;
+  const ToolItem(this.title, this.desc, this.icon, this.builder);
+}
+
+class ToolsPage extends StatelessWidget {
+  const ToolsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tools = <ToolItem>[
+      ToolItem('IP Checker', 'Apna public IP, ISP aur location dekho', Icons.public,
+          (_) => const IpCheckerPage()),
+      ToolItem('Port Scanner', 'Kisi host par common ports scan karo', Icons.lan,
+          (_) => const PortScannerPage()),
+      ToolItem('DNS Lookup', 'Domain ko IP addresses mein resolve karo', Icons.dns,
+          (_) => const DnsLookupPage()),
+      ToolItem('Subnet Calculator', 'Network, broadcast aur host range nikalo', Icons.calculate,
+          (_) => const SubnetCalcPage()),
+      ToolItem('Command Explainer', 'Nmap/Linux commands ko samjho', Icons.terminal,
+          (_) => const CommandExplainerPage()),
+    ];
+
+    return ListView(padding: const EdgeInsets.all(20), children: [
+      const Text('Tools', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 4),
+      const Text('Real network tools — sirf authorized targets par use karo.',
+          style: TextStyle(color: C.muted, fontSize: 12)),
+      const SizedBox(height: 16),
+      for (final t in tools)
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: t.builder)),
+          child: GCard(
+            child: Row(children: [
+              Sticker(t.icon),
+              const SizedBox(width: 14),
+              Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(t.desc, style: const TextStyle(color: C.muted, fontSize: 12)),
+              ])),
+              const Icon(Icons.chevron_right, color: C.muted),
+            ]),
+          ),
+        ),
+    ]);
+  }
+}
+
+/* ===================== TOOL: IP CHECKER ===================== */
+class IpCheckerPage extends StatefulWidget {
+  const IpCheckerPage({super.key});
+  @override
+  State<IpCheckerPage> createState() => _IpCheckerPageState();
+}
+
+class _IpCheckerPageState extends State<IpCheckerPage> {
+  bool loading = false;
+  String? error;
+  Map<String, dynamic>? data;
+
+  @override
+  void initState() {
+    super.initState();
+    fetch();
+  }
+
+  Future<void> fetch() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final res = await http
+          .get(Uri.parse('http://ip-api.com/json/'))
+          .timeout(const Duration(seconds: 12));
+      final j = jsonDecode(res.body);
+      if (j['status'] == 'success') {
+        setState(() => data = j);
+      } else {
+        setState(() => error = 'Lookup fail hua, dobara try karo.');
+      }
+    } catch (e) {
+      setState(() => error = 'Internet connection check karo.');
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  Widget row(String k, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(children: [
+          SizedBox(
+              width: 90,
+              child: Text(k,
+                  style: const TextStyle(
+                      color: C.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+          Expanded(
+              child: Text(v,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(backgroundColor: C.bg, title: const Text('IP Checker')),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(20), children: [
+          GCard(
+            borderColor: C.accent,
+            padding: const EdgeInsets.all(28),
+            child: Column(children: [
+              const Sticker(Icons.public, size: 60),
+              const SizedBox(height: 16),
+              if (loading) const CircularProgressIndicator(color: C.accent),
+              if (!loading && error != null)
+                Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: C.danger)),
+              if (!loading && data != null) ...[
+                Text('${data!['query'] ?? '-'}',
+                    style: const TextStyle(
+                        fontSize: 26, fontWeight: FontWeight.w800, color: C.accentL)),
+                const SizedBox(height: 4),
+                const Text('YOUR PUBLIC IP',
+                    style: TextStyle(
+                        color: C.muted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1)),
+              ],
+            ]),
+          ),
+          if (!loading && data != null)
+            GCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                row('Country', '${data!['country'] ?? '-'}'),
+                row('Region', '${data!['regionName'] ?? '-'}'),
+                row('City', '${data!['city'] ?? '-'}'),
+                row('ISP', '${data!['isp'] ?? '-'}'),
+                row('Org', '${data!['org'] ?? '-'}'),
+                row('Timezone', '${data!['timezone'] ?? '-'}'),
+              ]),
+            ),
+          PrimaryBtn(loading ? 'Checking...' : 'Refresh', loading ? () {} : fetch),
+        ]),
+      ),
+    );
+  }
+}
+
+/* ===================== TOOL: PORT SCANNER ===================== */
+class PortScannerPage extends StatefulWidget {
+  const PortScannerPage({super.key});
+  @override
+  State<PortScannerPage> createState() => _PortScannerPageState();
+}
+
+class _PortScannerPageState extends State<PortScannerPage> {
+  final hostCtrl = TextEditingController();
+  bool scanning = false;
+  int scanned = 0;
+  final List<MapEntry<int, bool>> results = [];
+
+  static const commonPorts = <int, String>{
+    21: 'FTP',
+    22: 'SSH',
+    23: 'Telnet',
+    25: 'SMTP',
+    53: 'DNS',
+    80: 'HTTP',
+    110: 'POP3',
+    143: 'IMAP',
+    443: 'HTTPS',
+    445: 'SMB',
+    3306: 'MySQL',
+    3389: 'RDP',
+    8080: 'HTTP-Alt',
+  };
+
+  Future<void> scan() async {
+    final host = hostCtrl.text.trim();
+    if (host.isEmpty || scanning) return;
+    setState(() {
+      scanning = true;
+      results.clear();
+      scanned = 0;
+    });
+
+    for (final port in commonPorts.keys) {
+      bool open = false;
+      try {
+        final socket =
+            await Socket.connect(host, port, timeout: const Duration(milliseconds: 900));
+        open = true;
+        socket.destroy();
+      } catch (_) {
+        open = false;
+      }
+      if (!mounted) return;
+      setState(() {
+        results.add(MapEntry(port, open));
+        scanned++;
+      });
+    }
+    if (mounted) setState(() => scanning = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final openCount = results.where((e) => e.value).length;
+    final total = commonPorts.length;
+    return Scaffold(
+      appBar: AppBar(backgroundColor: C.bg, title: const Text('Port Scanner')),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(20), children: [
+          GCard(
+            child: Column(children: [
+              const Sticker(Icons.lan, size: 60),
+              const SizedBox(height: 14),
+              const Text('Common Port Scanner',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              const Text(
+                  'Sirf apne systems ya likhit ijazat wale targets par use karo.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: C.danger, fontSize: 11, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: hostCtrl,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  hintText: 'e.g. scanme.nmap.org',
+                  filled: true,
+                  fillColor: C.surface,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: C.border)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              PrimaryBtn(scanning ? 'Scanning...' : 'Start Scan', scanning ? () {} : scan),
+            ]),
+          ),
+          if (scanning)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(children: [
+                LinearProgressIndicator(
+                    value: scanned / total, color: C.accent, backgroundColor: Colors.white10),
+                const SizedBox(height: 6),
+                Text('$scanned / $total ports checked',
+                    style: const TextStyle(color: C.muted, fontSize: 12)),
+              ]),
+            ),
+          if (results.isNotEmpty)
+            GCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Results — $openCount open',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                const SizedBox(height: 10),
+                for (final r in results)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(children: [
+                      Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                              color: r.value ? C.success : C.muted, shape: BoxShape.circle)),
+                      const SizedBox(width: 10),
+                      Text('Port ${r.key}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 8),
+                      Text('(${commonPorts[r.key]})',
+                          style: const TextStyle(color: C.muted, fontSize: 12)),
+                      const Spacer(),
+                      Text(r.value ? 'OPEN' : 'closed',
+                          style: TextStyle(
+                              color: r.value ? C.success : C.muted,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12)),
+                    ]),
+                  ),
+              ]),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+/* ===================== TOOL: DNS LOOKUP ===================== */
+class DnsLookupPage extends StatefulWidget {
+  const DnsLookupPage({super.key});
+  @override
+  State<DnsLookupPage> createState() => _DnsLookupPageState();
+}
+
+class _DnsLookupPageState extends State<DnsLookupPage> {
+  final ctrl = TextEditingController();
+  bool loading = false;
+  String? error;
+  List<InternetAddress> results = [];
+
+  Future<void> lookup() async {
+    final domain = ctrl.text.trim();
+    if (domain.isEmpty || loading) return;
+    setState(() {
+      loading = true;
+      error = null;
+      results = [];
+    });
+    try {
+      final addrs = await InternetAddress.lookup(domain).timeout(const Duration(seconds: 10));
+      setState(() => results = addrs);
+    } catch (e) {
+      setState(() => error = 'Resolve nahi hua. Domain spelling check karo.');
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(backgroundColor: C.bg, title: const Text('DNS Lookup')),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(20), children: [
+          GCard(
+            child: Column(children: [
+              const Sticker(Icons.dns, size: 60),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ctrl,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  hintText: 'e.g. google.com',
+                  filled: true,
+                  fillColor: C.surface,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: C.border)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              PrimaryBtn(loading ? 'Looking up...' : 'Lookup', loading ? () {} : lookup),
+            ]),
+          ),
+          if (error != null)
+            GCard(
+                borderColor: C.danger,
+                child: Text(error!, style: const TextStyle(color: C.danger))),
+          if (results.isNotEmpty)
+            GCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Resolved Addresses', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                for (final a in results)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Text(a.address,
+                        style: const TextStyle(fontFamily: 'monospace', color: C.accentL, fontSize: 15)),
+                  ),
+              ]),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+/* ===================== TOOL: SUBNET CALCULATOR ===================== */
+class SubnetCalcPage extends StatefulWidget {
+  const SubnetCalcPage({super.key});
+  @override
+  State<SubnetCalcPage> createState() => _SubnetCalcPageState();
+}
+
+class _SubnetCalcPageState extends State<SubnetCalcPage> {
+  final ipCtrl = TextEditingController(text: '192.168.1.0');
+  final cidrCtrl = TextEditingController(text: '24');
+  String? error;
+  Map<String, String>? result;
+
+  void calculate() {
+    setState(() {
+      error = null;
+      result = null;
+    });
+    try {
+      final parts = ipCtrl.text.trim().split('.').map(int.parse).toList();
+      if (parts.length != 4 || parts.any((p) => p < 0 || p > 255)) {
+        throw 'bad ip';
+      }
+      final cidr = int.parse(cidrCtrl.text.trim());
+      if (cidr < 0 || cidr > 32) throw 'bad cidr';
+
+      final ipInt = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
+      final mask = cidr == 0 ? 0 : (0xFFFFFFFF << (32 - cidr)) & 0xFFFFFFFF;
+      final network = ipInt & mask;
+      final broadcast = network | (~mask & 0xFFFFFFFF);
+      final hosts = cidr >= 31 ? 0 : (1 << (32 - cidr)) - 2;
+
+      String toIp(int v) => '${(v >> 24) & 255}.${(v >> 16) & 255}.${(v >> 8) & 255}.${v & 255}';
+
+      setState(() => result = {
+            'Network Address': toIp(network),
+            'Broadcast Address': toIp(broadcast),
+            'Subnet Mask': toIp(mask),
+            'Usable Hosts': hosts.toString(),
+            'First Usable': hosts > 0 ? toIp(network + 1) : '-',
+            'Last Usable': hosts > 0 ? toIp(broadcast - 1) : '-',
+          });
+    } catch (_) {
+      setState(() => error = 'Sahi IP aur CIDR (0-32) daalo.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(backgroundColor: C.bg, title: const Text('Subnet Calculator')),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(20), children: [
+          GCard(
+            child: Column(children: [
+              const Sticker(Icons.calculate, size: 60),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ipCtrl,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  labelText: 'IP Address',
+                  filled: true,
+                  fillColor: C.surface,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: C.border)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: cidrCtrl,
+                textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  labelText: 'CIDR (e.g. 24)',
+                  filled: true,
+                  fillColor: C.surface,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: C.border)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              PrimaryBtn('Calculate', calculate),
+            ]),
+          ),
+          if (error != null)
+            GCard(
+                borderColor: C.danger,
+                child: Text(error!, style: const TextStyle(color: C.danger))),
+          if (result != null)
+            GCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: result!.entries
+                    .map((e) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          child: Row(children: [
+                            Expanded(
+                                child: Text(e.key,
+                                    style: const TextStyle(
+                                        color: C.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+                            Text(e.value,
+                                style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w700,
+                                    color: C.accentL)),
+                          ]),
+                        ))
+                    .toList(),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+/* ===================== TOOL: COMMAND EXPLAINER ===================== */
+class CommandExplainerPage extends StatefulWidget {
+  const CommandExplainerPage({super.key});
+  @override
+  State<CommandExplainerPage> createState() => _CommandExplainerPageState();
+}
+
+class _CommandExplainerPageState extends State<CommandExplainerPage> {
   final ctrl = TextEditingController();
   List<String> out = [];
 
@@ -1050,192 +1742,105 @@ class _ToolsPageState extends State<ToolsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.all(20), children: [
-      GCard(
-        padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
-        child: Column(children: [
-          const Sticker(Icons.terminal, size: 70),
-          const SizedBox(height: 16),
-          const Text('Command Explainer',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          const Text('Nmap ya Linux commands ko analyze karo.',
-              style: TextStyle(color: C.muted, fontSize: 13)),
-          const SizedBox(height: 24),
-          TextField(
-            controller: ctrl,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: 'monospace'),
-            decoration: InputDecoration(
-              hintText: 'e.g. nmap -sV target',
-              filled: true,
-              fillColor: C.surface,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: C.border)),
-            ),
+    return Scaffold(
+      appBar: AppBar(backgroundColor: C.bg, title: const Text('Command Explainer')),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(20), children: [
+          GCard(
+            padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
+            child: Column(children: [
+              const Sticker(Icons.terminal, size: 70),
+              const SizedBox(height: 16),
+              const Text('Command Explainer',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              const Text('Nmap ya Linux commands ko analyze karo.',
+                  style: TextStyle(color: C.muted, fontSize: 13)),
+              const SizedBox(height: 24),
+              TextField(
+                controller: ctrl,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  hintText: 'e.g. nmap -sV target',
+                  filled: true,
+                  fillColor: C.surface,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: C.border)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              PrimaryBtn('Analyze Command', analyze),
+            ]),
           ),
-          const SizedBox(height: 16),
-          PrimaryBtn('Analyze Command', analyze),
+          if (out.isNotEmpty)
+            GCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                for (final line in out)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Text.rich(TextSpan(children: rich(line)),
+                        style: const TextStyle(height: 1.5, color: Color(0xFFCBD5E1))),
+                  ),
+              ]),
+            ),
         ]),
       ),
-      if (out.isNotEmpty)
-        GCard(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            for (final line in out)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Text.rich(TextSpan(children: rich(line)),
-                    style: const TextStyle(height: 1.5, color: Color(0xFFCBD5E1))),
-              ),
-          ]),
-        ),
-    ]);
-  }
-}
-
-class TutorPage extends StatefulWidget {
-  const TutorPage({super.key});
-  @override
-  State<TutorPage> createState() => _TutorPageState();
-}
-
-class _TutorPageState extends State<TutorPage> {
-  final ctrl = TextEditingController();
-  final scroll = ScrollController();
-  final msgs = <Map<String, String>>[
-    {'role': 'assistant', 'content': 'Hi Hacker! Aaj kya seekhna hai? Network scanning ya Web Security?'}
-  ];
-  bool loading = false;
-
-  Future<void> send() async {
-    final text = ctrl.text.trim();
-    if (text.isEmpty || loading) return;
-    ctrl.clear();
-    setState(() {
-      msgs.add({'role': 'user', 'content': text});
-      loading = true;
-    });
-    try {
-      final res = await http
-          .post(
-            Uri.parse('${app.url}/v1/chat/completions'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'model': 'local',
-              'messages': [
-                {
-                  'role': 'system',
-                  'content':
-                      'Tum ek ethical hacking tutor ho. Roman Urdu mein jawab do. '
-                      'Sirf authorized/legal learning mein madad karo; illegal ya bina ijazat attacks mein madad nahi.'
-                },
-                ...msgs,
-              ],
-            }),
-          )
-          .timeout(const Duration(seconds: 60));
-      final data = jsonDecode(res.body);
-      final reply = data['choices'][0]['message']['content'] as String;
-      setState(() => msgs.add({'role': 'assistant', 'content': reply}));
-    } catch (e) {
-      setState(() => msgs.add({
-            'role': 'system',
-            'content': 'Server se connect nahi hua. Settings mein URL check karo.'
-          }));
-    } finally {
-      setState(() => loading = false);
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (scroll.hasClients) {
-          scroll.animateTo(scroll.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
-        }
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(children: [
-        GCard(
-          borderColor: C.accent,
-          padding: const EdgeInsets.all(16),
-          child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('🤖 AI Tutor', style: TextStyle(color: C.accent, fontWeight: FontWeight.w700)),
-            SizedBox(height: 4),
-            Text('Local AI server se connected (Settings mein URL set karo).',
-                style: TextStyle(fontSize: 12)),
-          ]),
-        ),
-        Expanded(
-          child: ListView.builder(
-            controller: scroll,
-            itemCount: msgs.length,
-            itemBuilder: (_, k) {
-              final m = msgs[k];
-              final u = m['role'] == 'user';
-              final s = m['role'] == 'system';
-              return Align(
-                alignment: u ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .85),
-                  margin: const EdgeInsets.symmetric(vertical: 6),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: u ? C.accent : (s ? C.danger.withOpacity(.1) : C.surface),
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(18),
-                      topRight: const Radius.circular(18),
-                      bottomLeft: Radius.circular(u ? 18 : 4),
-                      bottomRight: Radius.circular(u ? 4 : 18),
-                    ),
-                    border: Border.all(
-                        color: u ? Colors.transparent : (s ? C.danger.withOpacity(.3) : C.border)),
-                  ),
-                  child: SelectableText.rich(
-                    TextSpan(children: rich(m['content']!)),
-                    style: TextStyle(
-                        fontSize: s ? 12 : 14,
-                        height: 1.6,
-                        color: u ? Colors.black : (s ? C.danger : C.text)),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        if (loading) const LinearProgressIndicator(minHeight: 2, color: C.accent),
-        const SizedBox(height: 8),
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: ctrl,
-              onSubmitted: (_) => send(),
-              decoration: InputDecoration(
-                hintText: 'Message tutor...',
-                filled: true,
-                fillColor: C.surface,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(100),
-                    borderSide: const BorderSide(color: C.border)),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton.filled(
-            onPressed: send,
-            style: IconButton.styleFrom(backgroundColor: C.accent, padding: const EdgeInsets.all(14)),
-            icon: const Icon(Icons.send, size: 20),
-          ),
-        ]),
-      ]),
     );
   }
 }
 
+/* ===================== AI TUTOR (COMING SOON) ===================== */
+class TutorPage extends StatelessWidget {
+  const TutorPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(colors: [C.accent, Color(0xFF8B5CF6)]),
+              boxShadow: [BoxShadow(color: C.accent.withOpacity(.4), blurRadius: 30)],
+            ),
+            child: const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 44),
+          ),
+          const SizedBox(height: 24),
+          const Text('AI Tutor', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: C.accent.withOpacity(.12),
+              borderRadius: BorderRadius.circular(99),
+              border: Border.all(color: C.accent.withOpacity(.4)),
+            ),
+            child: const Text('COMING SOON',
+                style: TextStyle(
+                    color: C.accentL,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1)),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Ek smart AI tutor jo tumhare sawalon ka jawab de, concepts samjhaye aur practice mein guide kare — jald aa raha hai.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: C.muted, fontSize: 13, height: 1.6),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/* ===================== BADGES ===================== */
 class BadgesPage extends StatelessWidget {
   const BadgesPage({super.key});
   @override
