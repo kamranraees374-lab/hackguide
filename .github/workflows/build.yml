@@ -15,24 +15,20 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - name: Install dependencies
+
+      - name: Restore Android folder
         run: |
-          flutter pub add firebase_core firebase_auth google_sign_in google_mobile_ads pdf printing http shared_preferences
-      - name: Internet permission
-        run: |
-          grep -q "INTERNET" android/app/src/main/AndroidManifest.xml || sed -i '2i\ <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
-      - name: Add custom app icon
-        run: |
-          if [ -f "assets/icon.png" ]; then
-            for d in android/app/src/main/res/mipmap-*; do
-              cp assets/icon.png "$d/ic_launcher.png"
-            done
-            echo "Icon added"
-          else
-            echo "assets/icon.png not found, using default icon"
+          if [ ! -d "android/app" ]; then
+            flutter create --org com.kamranraees --project-name hackguide --platforms=android .
           fi
-      - name: Build release APK
+          ls android/app/
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK
         run: flutter build apk --release
+
       - uses: actions/upload-artifact@v4
         with:
           name: hackguide-apk
