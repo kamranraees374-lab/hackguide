@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1065822551165",
+    "project_id": "hachguide",
+    "storage_bucket": "hachguide.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1065822551165:android:7d2eab4abb21afed950514",
+        "android_client_info": {
+          "package_name": "com.kamranraees.hackguide"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaV6A-VDz3819gKNTjA7KS-WEvN0hOyFw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
